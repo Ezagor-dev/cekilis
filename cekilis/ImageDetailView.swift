@@ -5,14 +5,20 @@
 //  Created by Ezagor on 10.04.2024.
 //
 
-import SwiftUI
 
-struct ImageDetailView: View {
-    var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+import SwiftUI
+import UIKit
+import Photos
+
+// Extension to help with associating objects to NSObject subclasses
+extension NSObject {
+    func setAssociatedObject<T>(_ value: T, associativeKey: UnsafeRawPointer, policy: objc_AssociationPolicy) {
+        objc_setAssociatedObject(self, associativeKey, value, policy)
+    }
+    
+    func getAssociatedObject<T>(_ associativeKey: UnsafeRawPointer) -> T? {
+        return objc_getAssociatedObject(self, associativeKey) as? T
     }
 }
 
-#Preview {
-    ImageDetailView()
-}
+

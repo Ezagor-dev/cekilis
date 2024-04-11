@@ -22,14 +22,78 @@ class SheetManager: ObservableObject {
 
 }
 
+class SheetManagerTickets: ObservableObject {
+    @Published var showingDetail: Bool = false
+    @Published var selectedImage: UIImage? // Optional: If you're using UIImage in some contexts
+    @Published var selectedDescription: String?
+    @Published var selectedImageURL: String? // Changed to a normal String property
+    @Published var showingPurchaseView: Bool = false // Ensure this property is declared
+    @Published var selectedTicketTitle: String? 
+}
+
 struct Artwork: Identifiable {
     var id: String
     var prompt: String
     var category: String
     var imageURL: String
     var isLoading: Bool = true // Default to true
-    
 }
+
+struct Tickets: Identifiable{
+    var id: String
+    var category: String
+    var description: String
+    var imageURL: String
+    var isAvailable: Bool = true
+    var isLive: Bool = false
+    var prizeCount: Int
+    var prizeValue: Int
+    var purchaseCount: Int
+    var raffleDateString: String
+    var ticketPrice: Double
+    var titleTicket: String
+    var totalTicket: Int
+}
+
+class TicketsViewModel: ObservableObject {
+    @Published var tickets = [Tickets]()
+    @Published var isLoading = false
+        @Published var errorMessage: String?
+    private var db = Firestore.firestore()
+    private let pageSize = 150 // Decide the number of artworks to fetch each time
+
+    func fetchTickets() {
+        isLoading = true
+        db.collection("tickets").limit(to: pageSize).getDocuments { (snapshot, error) in
+            guard let documents = snapshot?.documents else {
+                print("Error fetching documents: \(error?.localizedDescription ?? "unknown error")")
+                return
+            }
+            // Shuffle the artworks here
+            self.tickets = documents.map { doc -> Tickets in
+                let data = doc.data()
+                let category = data["category"] as? String ?? ""
+                let description = data["description"] as? String ?? ""
+                let imageURL = data["imageURL"] as? String ?? ""
+                let isAvailable = data["isAvailable"] as? Bool ?? true
+                let isLive = data["isLive"] as? Bool ?? false
+                let prizeCount = data["prizeCount"] as? Int ?? 2
+                let prizeValue = data["prizeValue"] as? Int ?? 200
+                let purchaseCount = data["purchaseCount"] as? Int ?? 5
+                let raffleDateString = data["raffleDateString"] as? String ?? ""
+                let ticketPrice = data["ticketPrice"] as? Double ?? 5
+                let titleTicket = data["titleTicket"] as? String ?? ""
+                let totalTicket = data["totalTicket"] as? Int ?? 10
+                
+                return Tickets(id: doc.documentID, category: category, description: description, imageURL: imageURL, isAvailable: isAvailable, isLive: isLive, prizeCount: prizeCount, prizeValue: prizeValue, purchaseCount: purchaseCount, raffleDateString: raffleDateString, ticketPrice: ticketPrice, titleTicket: titleTicket, totalTicket: totalTicket)
+
+                
+            }.shuffled() // Shuffle the array of artworks
+        }
+        self.isLoading = false
+    }
+}
+
 
 class ArtworksViewModel: ObservableObject {
     @Published var artworks = [Artwork]()
@@ -233,7 +297,179 @@ extension ArtworksViewModel {
         Set(artworks.map { $0.category }).sorted()
     }
 }
+struct ImageDetailViewPromptLastTickets: View {
+    @State private var showSaveAnimation = false
+    @State private var isSharing = false
 
+    @StateObject var sheetManagerTickets = SheetManagerTickets()
+    @State var motion: CMDeviceMotion? = nil
+    let motionManager = CMMotionManager()
+    let thresholdPitch: Double = 35 * .pi / 180
+    let maxRotationAngle = 20.0
+    @State var save = false
+    @State private var showSuccessMessage = false
+    @State private var showMessage = false
+        @State private var messageText = ""
+        @State private var messageColor = Color.green
+    @State private var animateStrokeStart = false
+        @State private var animateStrokeEnd = false
+    //var image: UIImage
+    var description: String
+    var imageURL: URL
+    @State private var shareImage: UIImage?
+
+    @Environment(\.presentationMode) var presentationMode
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+   
+    
+    var body: some View {
+        ZStack {
+            VStack {
+                HStack{
+
+                Button(action: {
+                    
+                    self.presentationMode.wrappedValue.dismiss()
+                }) {
+                    HStack {
+                        Image(systemName: "chevron.left") // Custom Back Icon
+                            .aspectRatio(contentMode: .fit)
+                            .foregroundColor(.blue)
+                        Text("Back")
+                            .foregroundColor(.blue)
+                    }
+                    
+                }
+                
+                    Spacer()
+            
+                    
+                    Button(action: {
+                       
+                            isSharing = true
+                        loadImageForSharing(from: imageURL)
+                        }) {
+                            Image(systemName: "square.and.arrow.up")
+                                .bold()
+                                .frame(width: 40, height: 40)
+                                .background(.ultraThinMaterial)
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                                .padding(.top, 70)
+//                                .offset(x: -10, y: -15)
+//                                .padding(.top, 70)
+                        }
+                    
+                
+                }.padding(.top, 10)
+                    .padding([.leading, .trailing], 20) // This ensures the HStack fills the width and places content at the top
+
+                .sheet(isPresented: $isSharing, onDismiss: {
+                    // You can perform any actions you need when the sheet is dismissed
+                    isSharing = false
+                    shareImage = nil
+                }, content: {
+                    // Convert the URL to a UIImage if possible and present it in an ActivityViewController
+                    if let uiImage = shareImage {
+                            ActivityViewController(activityItems: [uiImage])
+                        }
+                })
+                /*.frame(maxWidth: .infinity, alignment: .leading)*/ // Ensures the HStack takes full width
+                //Spacer()
+                
+                ZStack{
+                    KFImage(imageURL)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 300, height: 300)
+                                        .cornerRadius(20)
+                                        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 0)
+                        }
+                        .padding()
+
+                Text(description)
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                    .padding()
+                    .background(Color.white.opacity(0.85))
+                    .cornerRadius(8)
+                    .padding(.horizontal)
+                    .shadow(radius: 5)
+                
+                Spacer()
+                
+                HStack(spacing: 20) {
+                                    Button(action: {
+                                        
+                                        UIPasteboard.general.string = description
+                                        displayMessage("Prompt copied to clipboard.", color: .blue)
+                                    }) {
+                                        Label("Satın Al", systemImage: "dollarsign")
+                                    }
+                                    .buttonStyle(ActionButtonStyle(backgroundColor: Color.blue))
+                                    
+                                    
+                                    .padding()
+                                }
+                            }
+
+                                                   // Message overlay
+                                                   if showMessage {
+                                                       messageOverlay
+                                                           .transition(.move(edge: .bottom).combined(with: .opacity))
+                                                           .animation(.easeOut(duration: 2.5), value: showMessage)
+                                                          
+                                                           .onAppear {
+                                                               DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                                                   showMessage = false
+                                                               }
+                                                           }
+                                                   }
+                                               }
+                                               .background(LinearGradient(gradient: Gradient(colors: [Color(hex: "#3D2C8D"), Color(hex: "#916BBF")]), startPoint: .top, endPoint: .bottom))
+                                               .edgesIgnoringSafeArea(.all)
+                                           }
+
+                           private var messageOverlay: some View {
+                               Text(messageText)
+                                   .bold()
+                                   .foregroundColor(.white)
+                                   .padding()
+                                   .background(messageColor)
+                                   .cornerRadius(10)
+                                   .shadow(radius: 10)
+                                   .padding(.horizontal)
+                                   .frame(maxWidth: .infinity)
+                                   .position(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height - 100)
+                           }
+
+    
+    private func loadImageForSharing(from url: URL) {
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let data = data, let image = UIImage(data: data) {
+                DispatchQueue.main.async {
+                    self.shareImage = image
+                    self.isSharing = true // Present the share sheet once the image is loaded
+                }
+            } else {
+                // Handle the error scenario, perhaps show an alert to the user
+                print("Error loading image for sharing: \(error?.localizedDescription ?? "Unknown error")")
+            }
+        }.resume()
+    }
+    
+    
+
+    
+    
+    
+        private func displayMessage(_ text: String, color: Color) {
+            messageText = text
+            messageColor = color
+            showMessage = true
+        }
+    }
 
 
 struct ImageDetailViewPromptLast: View {
@@ -431,9 +667,9 @@ struct AnimatedStrokeShape: Shape {
 }
 
 
-#Preview {
-    GalleryView()
-}
+//#Preview {
+//    GalleryView()
+//}
 extension Color {
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)

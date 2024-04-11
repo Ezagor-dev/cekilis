@@ -3,7 +3,7 @@ import Kingfisher
 
 struct CustomTabBar: View {
     @Binding var selectedTab: String
-
+    
     var body: some View {
         ZStack {
             // Curved shape
@@ -73,7 +73,7 @@ struct CustomTabBar: View {
                     }
                     .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal)
+                    .padding(.horizontal)
             )
         }
     }
@@ -104,9 +104,10 @@ struct CustomCurveShape: Shape {
 struct ContentView: View {
     @State private var showingSettings = false
     @StateObject var sheetManager = SheetManager()
+    @StateObject var sheetManagerTicket = SheetManagerTickets()
     @State private var selectedCategory: String = "araba"
     @State private var animateGradient = false
-        @State private var isImageLoaded = false
+    @State private var isImageLoaded = false
     @State private var selectedTab: String = "home"
     let categories = ["araba", "beyazEsya", "telefon", "oyunBilgisayari", "televizyon", "tablet", "hoverboard", "karavan"]
     let categoryImages: [String: String] = [
@@ -121,11 +122,15 @@ struct ContentView: View {
         // Add the rest of your category image names here
     ]
     @ObservedObject private var viewModel = ArtworksViewModel()
+    @ObservedObject private var viewModelTicket = TicketsViewModel()
     
     var filteredArtworks: [Artwork] {
         selectedCategory == "araba" ? viewModel.artworks : viewModel.artworks.filter { $0.category == selectedCategory }
     }
-
+    var filteredTickets: [Tickets] {
+        selectedCategory == "araba" ? viewModelTicket.tickets : viewModelTicket.tickets.filter { $0.category == selectedCategory }
+    }
+    
     var body: some View {
         
         GeometryReader { geometry in
@@ -145,56 +150,44 @@ struct ContentView: View {
                     VStack {
                         ScrollView {
                             topLogoBar(showingSettings: $showingSettings)
-                                                        .padding(.top, geometry.safeAreaInsets.top)
-                        
-                        // Category Bar
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) { // Adjusted spacing to match the provided code
-                                ForEach(categories, id: \.self) { category in
-                                    if let imageName = categoryImages[category], let image = UIImage(named: imageName) {
-                                        CategoryItem(
-                                            category: category,
-                                            isSelected: selectedCategory == category,
-                                            action: {
-                                                withAnimation {
-                                                    selectedCategory = category
-                                                }
-                                            },
-                                            image: Image(uiImage: image)
-                                        )
-                                    }
-                                }
-                            }
-                            .padding(.horizontal)
-                        }
-                        
-                        // Artworks Grid
-                        
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
-                                ForEach(filteredArtworks) { artwork in
-                                    Button(action: {
-                                        sheetManager.selectedPrompt = artwork.prompt
-                                        sheetManager.selectedImageURL = artwork.imageURL // Assuming you have this property
-                                        sheetManager.showingDetail = true
-                                    }) {
-                                        if isImageLoaded {
-                                            KFImage(URL(string: artwork.imageURL))
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(height: 200)
-                                                .cornerRadius(8)
-                                        } else {
-                                            // Placeholder view while loading
-                                            KFImage(URL(string: artwork.imageURL))
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(height: 200)
-                                                .cornerRadius(8)
+                                .padding(.top, geometry.safeAreaInsets.top)
+                            
+                            // Category Bar
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) { // Adjusted spacing to match the provided code
+                                    ForEach(categories, id: \.self) { category in
+                                        if let imageName = categoryImages[category], let image = UIImage(named: imageName) {
+                                            CategoryItem(
+                                                category: category,
+                                                isSelected: selectedCategory == category,
+                                                action: {
+                                                    withAnimation {
+                                                        selectedCategory = category
+                                                    }
+                                                },
+                                                image: Image(uiImage: image)
+                                            )
                                         }
                                     }
                                 }
+                                .padding(.horizontal)
                             }
-                            .padding(.horizontal)
+                            
+                            // Tickets Grid
+                            
+                                LazyVGrid(columns: [GridItem(.flexible())], spacing: 10) {
+                                    ForEach(filteredTickets) { ticket in
+                                        TicketView(ticket: ticket)
+                                            .frame(width: geometry.size.width, height: 200)
+                                            .position(x: geometry.size.width / 2.2, y: geometry.size.height / 5)
+                                        Spacer()
+                                    }
+                                }
+                                
+                                .padding(.horizontal)
+                                .padding(.vertical)
+                            Spacer()
+                            
                         }
                         
                         Spacer()
@@ -203,67 +196,67 @@ struct ContentView: View {
                             .frame(width: geometry.size.width, height: 88)
                     }
                     NavigationLink(destination: SettingsView(), isActive: $showingSettings) {
-                                    EmptyView()
-                                }
-                                .hidden()
+                        EmptyView()
+                    }
+                    .hidden()
                 }
                 .navigationBarBackButtonHidden(true)
                 .onAppear() {
-                    viewModel.fetchArtworks()
+                    viewModelTicket.fetchTickets()
                     animateGradient.toggle()
                 }
-                .fullScreenCover(isPresented: $sheetManager.showingDetail) {
-                    if let selectedPrompt = sheetManager.selectedPrompt,
-                       let imageURLString = sheetManager.selectedImageURL,
+                .fullScreenCover(isPresented: $sheetManagerTicket.showingDetail) {
+                    if let selectedDescription = sheetManagerTicket.selectedDescription,
+                       let imageURLString = sheetManagerTicket.selectedImageURL,
                        let imageURL = URL(string: imageURLString) {
-                        ImageDetailViewPromptLast(prompt: selectedPrompt, imageURL: imageURL)
+                        ImageDetailViewPromptLastTickets(description: selectedDescription, imageURL: imageURL)
                     } else {
                         Text("No image selected or image failed to load.")
                     }
                 }
             }
-            }
-            .edgesIgnoringSafeArea(.all)
         }
+        .edgesIgnoringSafeArea(.all)
     }
+}
 
-    // Separated top logo bar for better readability
+// Separated top logo bar for better readability
 func topLogoBar(showingSettings: Binding<Bool>) -> some View {
-        HStack {
-            // Left top logo
-            Image("luckylogo") // Replace with actual image asset name
-                .resizable()
-                .scaledToFit()
-                .frame(width: 50, height: 50)
-                .padding(.leading)
-            
-            Spacer()
-            
-            // Center top logo
-            Image("2logo") // Replace with actual image asset name
-                .resizable()
-                .scaledToFit()
-                .frame(width: 150, height: 100)
-            
-            Spacer()
-            
-            // Right top settings icon
-            Button(action: {
-                showingSettings.wrappedValue = true
-                // Define the action for settings button here
-            }) {
-                Image(systemName: "gear")
-                    .font(.title)
-                    .foregroundColor(.black)
-            }
-            .padding(.trailing)
-        }.background(
-            NavigationLink(destination: SettingsView(), isActive: showingSettings) {
-                EmptyView()
-            }
+    HStack {
+        // Left top logo
+        Image("luckylogo") // Replace with actual image asset name
+            .resizable()
+            .scaledToFit()
+            .frame(width: 50, height: 50)
+            .padding(.leading)
+        
+        Spacer()
+        
+        // Center top logo
+        Image("logoSansli") // Replace with actual image asset name
+            .resizable()
+            .scaledToFit()
+            .frame(width: 150, height: 100)
+        
+        Spacer()
+        
+        // Right top settings icon
+        Button(action: {
+            showingSettings.wrappedValue = true
+            // Define the action for settings button here
+        }) {
+            Image(systemName: "gear")
+                .font(.title)
+                .foregroundColor(.black)
+        }
+        .padding(.trailing)
+    }.background(
+        NavigationLink(destination: SettingsView(), isActive: showingSettings) {
+            EmptyView()
+        }
             .hidden()
-        )
-    }
+    )
+}
 
 
 // Don't forget to define CategoryItem and any other custom views that you are using.

@@ -117,7 +117,7 @@ struct TicketView: View {
                                 HStack {
                                     Text("\(ticket.prizeValue)₺")
                                         .font(.system(size: 9))
-                                        .foregroundColor(.pink)
+                                        .foregroundColor(.white)
                                         .bold()
                                     Spacer()
                                     Text("\(ticket.prizeCount) Ödül")
@@ -240,7 +240,8 @@ struct TicketView: View {
             Text(selectedMultiplier == 1 ? "1X" : "\(selectedMultiplier)x")
                 .font(.system(size: 8))
                 .foregroundColor(.white)
-                .padding()
+                .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
                 .frame(height: 30)
                 .background(Color.red)
                 .cornerRadius(10)

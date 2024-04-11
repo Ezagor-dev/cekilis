@@ -69,10 +69,13 @@ struct TicketShape: Shape {
 // .rotationEffect(.degrees(90))
 struct TicketView: View {
     var ticket: Tickets
+    @State private var showMultipliers = false
+    @State private var showPurchaseButton = true
+    @State private var selectedMultiplier: Int = 1
     @ObservedObject private var viewModelTicket = TicketsViewModel()
     var body: some View {
         let raffleDate = parseDateString(dateString: ticket.raffleDateString)
-                let daysUntilRaffle = daysBetween(start: Date(), end: raffleDate)
+        let daysUntilRaffle = daysBetween(start: Date(), end: raffleDate)
         ZStack {
             TicketShape()
                 .fill(LinearGradient(gradient: Gradient(colors: [Color.blue, Color.purple]), startPoint: .leading, endPoint: .trailing))
@@ -86,12 +89,12 @@ struct TicketView: View {
                                 Text("Çekilişe son:")
                                     .font(.system(size: 10))
                                     .foregroundColor(.white)
-                                    
+                                
                                 Text("\(daysUntilRaffle+1) Gün")
                                     .font(.system(size: 14))
                                     .bold()
                                     .foregroundColor(.white)
-                                    
+                                
                             }
                             AsyncImage(url: URL(string: ticket.imageURL)) { phase in
                                 if let image = phase.image {
@@ -120,28 +123,33 @@ struct TicketView: View {
                                     Text("\(ticket.prizeCount) Ödül")
                                         .font(.system(size: 12))
                                         .foregroundColor(.white)
-//                                        .padding(.leading)
+                                    //                                        .padding(.leading)
                                 }.padding(.top, 10)
                             }
                         }
                         .padding(.leading, 10)
-
+                        
                         DashedSeparator()
                             .stroke(style: StrokeStyle(lineWidth: 1, dash: [5]))
                             .foregroundColor(.white)
                             .opacity(0.5)
                             .frame(height: 100)
-                            .padding(.leading)
+                            .padding(.horizontal,10)
                             .rotationEffect(.degrees(90))
+                        Spacer()
+                        
                         
                         VStack(alignment: .trailing, spacing: 4) {
+                            
                             Text("\(ticket.titleTicket)")
                                 .bold()
                                 .foregroundColor(.black)
                                 .font(.system(size: 10))
-                                
+                            
                                 .lineLimit(4)
+                            
                             HStack{
+                                Spacer()
                                 Text("Çekiliş tarihi:")
                                     .foregroundColor(.black.opacity(0.6))
                                     .font(.system(size: 10))
@@ -150,11 +158,13 @@ struct TicketView: View {
                                     .foregroundColor(.black.opacity(0.6))
                                     .font(.system(size: 10))
                             }
+                            
+                            
                             let kalanBilet = Double(ticket.totalTicket) - Double(ticket.purchaseCount)
                             let yuzdeBilet = ((kalanBilet / Double(ticket.totalTicket))*100)
-
                             
-                                    
+                            
+                            
                             
                             Text("Kalan Bilet: \(yuzdeBilet, specifier: "%.2f")%")
                                 .foregroundColor(.black.opacity(0.6))
@@ -164,53 +174,115 @@ struct TicketView: View {
                                 .foregroundColor(.black.opacity(0.6))
                                 .font(.system(size: 16))
                                 .bold()
-
-                            HStack(spacing: 8) {
-                                Button(action: {
-                                    // Handle the button tap
-                                }) {
-                                    Text("Bilet al")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.white)
-                                        .padding()
-                                        .frame(height: 30)
-                                        .background(Color.red)
-                                        .cornerRadius(10)
-                                        .bold()
+                            
+                            // Multiplier toggle button and selection view
+                            // Button section
+                            
+                            HStack {
+                                
+                                if showPurchaseButton{
+                                    purchaseButton
+                                    multiplierButton
+                                }else{
+                                    multiplierSelectionView
                                 }
 
-                                Button(action: {
-                                    // Handle the button tap
-                                }) {
-                                    Text("5x")
-                                        .font(.system(size: 10))
-                                        .bold()
-                                        .foregroundColor(.white)
-                                        .padding(7)
-                                        .background(Color.black.opacity(0.5))
-                                        .cornerRadius(10)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .stroke(Color.white, lineWidth: 1)
-                                        )
-                                }
                             }
+                            .transition(.move(edge: .trailing)) // Use a transition for smoother appearance/disappearance
+                                        .animation(.easeInOut, value: showMultipliers)
                         }
-                        .padding(.trailing, 10)
+                        .frame(width: 115, alignment: .trailing)
+                        
+                        
+                        
+                                                    .padding(.trailing, 10) // Ensure padding is consistent
                     }
                 )
         }
     }
+    
+    
     private func parseDateString(dateString: String) -> Date {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "dd.MM.yy" // Adjust the date format to the format of your raffleDateString
-            dateFormatter.locale = Locale(identifier: "en_US_POSIX") // Use POSIX locale to ensure consistency
-            return dateFormatter.date(from: dateString) ?? Date()
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd.MM.yy" // Adjust the date format to the format of your raffleDateString
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX") // Use POSIX locale to ensure consistency
+        return dateFormatter.date(from: dateString) ?? Date()
+    }
+    
+    private func daysBetween(start: Date, end: Date) -> Int {
+        Calendar.current.dateComponents([.day], from: start, to: end).day ?? 0
+    }
+    var purchaseButton: some View {
+        Button(action: {
+            
+        }) {
+            Text("Bilet al")
+                .font(.system(size: 8))
+                .foregroundColor(.white)
+                .padding()
+                .frame(height: 30)
+                .background(Color.red)
+                .cornerRadius(10)
+                .bold()
         }
-
-        private func daysBetween(start: Date, end: Date) -> Int {
-            Calendar.current.dateComponents([.day], from: start, to: end).day ?? 0
+    }
+    var multiplierButton: some View {
+        Button(action: {
+            // This should show the multipliers when there is no selection or reset the selection to 1
+            showMultipliers = true
+            showPurchaseButton = false
+//            if selectedMultiplier == 1 {
+//                showMultipliers = true
+//            } else {
+//                selectedMultiplier = 1
+//            }
+        }) {
+            Text(selectedMultiplier == 1 ? "1X" : "\(selectedMultiplier)x")
+                .font(.system(size: 8))
+                .foregroundColor(.white)
+                .padding()
+                .frame(height: 30)
+                .background(Color.red)
+                .cornerRadius(10)
+                .bold()
         }
+    }
+    
+    var multiplierSelectionView: some View {
+        HStack(spacing: 8) {
+            ForEach([1, 5, 10, 20], id: \.self) { multiplier in
+                Button(action: {
+                    selectedMultiplier = multiplier
+                    showMultipliers = false
+                    showPurchaseButton = true
+                    // Trigger the action to purchase tickets with the selected multiplier
+                    // viewModelTicket.purchaseTickets(multiplier: multiplier)
+                }) {
+                    Text("\(multiplier)x")
+                        .font(.system(size: 7))
+                        .foregroundColor(.white)
+                        
+                        .frame(height: 30)
+                        .frame(width: 30)
+                        
+                        .background(Color.black)
+                        .cornerRadius(10)
+                        .bold()
+//                        .font(.system(size: 8))
+//                        .bold()
+//                        .frame(height: 30)
+//                        .foregroundColor(.white)
+//                        .padding()
+//                        .background(Color.black.opacity(0.5))
+//                        .cornerRadius(10)
+//                        .overlay(
+//                            RoundedRectangle(cornerRadius: 10)
+//                                .stroke(Color.white, lineWidth: 1)
+//                        )
+                }
+            }
+        }
+    }
 }
 
 struct DashedSeparator: Shape {

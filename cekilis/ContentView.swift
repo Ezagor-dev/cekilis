@@ -10,7 +10,7 @@ struct CustomTabBar: View {
             HStack {
                 Spacer()
             }
-            .frame(height: 88) // Match the height of your tab bar content
+            .frame(height: 90) // Match the height of your tab bar content
             .background(Color.purple)
             .cornerRadius(40)
             .overlay(
@@ -102,12 +102,14 @@ struct CustomCurveShape: Shape {
 
 // Usage in ContentView
 struct ContentView: View {
+    @State private var isTabBarVisible: Bool = true
+    @StateObject var cartViewModel = CartViewModel()
+    
     @State private var showingSettings = false
     @StateObject var sheetManager = SheetManager()
     @StateObject var sheetManagerTicket = SheetManagerTickets()
     @State private var selectedCategory: String = "araba"
     @State private var animateGradient = false
-    @State private var isImageLoaded = false
     @State private var selectedTab: String = "home"
     let categories = ["araba", "beyazEsya", "telefon", "oyunBilgisayari", "televizyon", "tablet", "hoverboard", "karavan"]
     let categoryImages: [String: String] = [
@@ -119,25 +121,64 @@ struct ContentView: View {
         "tablet": "tablet",
         "hoverboard": "hoverboard",
         "karavan": "karavan"
-        // Add the rest of your category image names here
     ]
-    @ObservedObject private var viewModel = ArtworksViewModel()
     @ObservedObject private var viewModelTicket = TicketsViewModel()
     
-    var filteredArtworks: [Artwork] {
-        selectedCategory == "araba" ? viewModel.artworks : viewModel.artworks.filter { $0.category == selectedCategory }
-    }
-    var filteredTickets: [Tickets] {
-        selectedCategory == "araba" ? viewModelTicket.tickets : viewModelTicket.tickets.filter { $0.category == selectedCategory }
+    var checkoutView: some View {
+        VStack {
+            Spacer()
+            HStack {
+                Button(action: {
+                    // Toggle the view to show the tab bar when the 'X' button is clicked
+                    withAnimation {
+                        isTabBarVisible = true
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill") // 'X' mark icon
+                        .foregroundColor(Color.gray) // Adjust color as needed
+                        .imageScale(.large)
+                        .padding(.trailing, 10) // Ensure it's not too close to the text
+                }
+
+                VStack(alignment: .leading) {
+                    Text("Ödenecek tutar")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Text("\(cartViewModel.totalPrice, specifier: "%.2f")₺")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                }
+
+                Spacer()
+
+                Button(action: {
+                    // The action to proceed to payment should be here
+                }) {
+                    Text("Ödemeye git")
+                        .font(.system(size: 16))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 20)
+                        .background(Color.blue) // Adjust to match your app's theme
+                        .cornerRadius(20)
+                }
+            }
+            .padding([.leading, .trailing], 20)
+            .padding([.top, .bottom], 10)
+            .background(Color.white)
+            .cornerRadius(15)
+            .shadow(radius: 5)
+            .padding(.bottom, 20)
+        }
+        .background(Color.white)
+        .transition(.move(edge: .bottom))
+        .animation(.easeOut, value: isTabBarVisible)
     }
     
     var body: some View {
-        
         GeometryReader { geometry in
             NavigationView {
-                
                 ZStack {
-                    
                     // Dynamic gradient background
                     LinearGradient(gradient: Gradient(colors: [Color(hex: "#6D5BBA"), Color(hex: "#5A189A"), Color(hex: "#9D4EDD"), Color(hex: "#C77DFF")]), startPoint: .topLeading, endPoint: .bottomTrailing)
                         .animation(
@@ -154,7 +195,7 @@ struct ContentView: View {
                             
                             // Category Bar
                             ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 10) { // Adjusted spacing to match the provided code
+                                HStack(spacing: 10) {
                                     ForEach(categories, id: \.self) { category in
                                         if let imageName = categoryImages[category], let image = UIImage(named: imageName) {
                                             CategoryItem(
@@ -174,93 +215,99 @@ struct ContentView: View {
                             }
                             
                             // Tickets Grid
-                            
-                                LazyVGrid(columns: [GridItem(.flexible())], spacing: 10) {
-                                    ForEach(filteredTickets) { ticket in
-                                        TicketView(ticket: ticket)
-                                            .frame(width: geometry.size.width, height: 200)
-                                            .position(x: geometry.size.width / 2.2, y: geometry.size.height / 5)
-                                        Spacer()
-                                    }
+                            LazyVGrid(columns: [GridItem(.flexible())], spacing: 10) {
+                                ForEach(viewModelTicket.tickets) { ticket in
+                                    TicketView(isTabBarVisible: $isTabBarVisible, ticket: ticket)
+                                        .environmentObject(cartViewModel)
+                                        .frame(width: geometry.size.width, height: 200)
+                                        .position(x: geometry.size.width / 2.2, y: geometry.size.height / 5)
                                 }
-                                
                                 .padding(.horizontal)
                                 .padding(.vertical)
+                            }
                             Spacer()
-                            
                         }
                         
-                        Spacer()
-                        
-                        CustomTabBar(selectedTab: $selectedTab)
-                            .frame(width: geometry.size.width, height: 88)
+                        if isTabBarVisible {
+                            CustomTabBar(selectedTab: $selectedTab)
+                                .frame(width: geometry.size.width, height: 88)
+                        } else {
+                            checkoutView
+                                .frame(width: geometry.size.width, height: 88)
+                                .background(Color.white)
+                        }
                     }
-                    NavigationLink(destination: SettingsView(), isActive: $showingSettings) {
-                        EmptyView()
+                    .navigationBarBackButtonHidden(true)
+                    .onAppear() {
+                        viewModelTicket.fetchTickets()
+                        animateGradient.toggle()
                     }
-                    .hidden()
-                }
-                .navigationBarBackButtonHidden(true)
-                .onAppear() {
-                    viewModelTicket.fetchTickets()
-                    animateGradient.toggle()
-                }
-                .fullScreenCover(isPresented: $sheetManagerTicket.showingDetail) {
-                    if let selectedDescription = sheetManagerTicket.selectedDescription,
-                       let imageURLString = sheetManagerTicket.selectedImageURL,
-                       let imageURL = URL(string: imageURLString) {
-                        ImageDetailViewPromptLastTickets(description: selectedDescription, imageURL: imageURL)
-                    } else {
-                        Text("No image selected or image failed to load.")
+                    .fullScreenCover(isPresented: $sheetManagerTicket.showingDetail) {
+                        if let selectedDescription = sheetManagerTicket.selectedDescription,
+                           let imageURLString = sheetManagerTicket.selectedImageURL,
+                           let imageURL = URL(string: imageURLString) {
+                            ImageDetailViewPromptLastTickets(description: selectedDescription, imageURL: imageURL)
+                        } else {
+                            Text("No image selected or image failed to load.")
+                        }
                     }
                 }
             }
         }
         .edgesIgnoringSafeArea(.all)
     }
-}
-
-// Separated top logo bar for better readability
-func topLogoBar(showingSettings: Binding<Bool>) -> some View {
-    HStack {
-        // Left top logo
-        Image("luckylogo") // Replace with actual image asset name
-            .resizable()
-            .scaledToFit()
-            .frame(width: 50, height: 50)
-            .padding(.leading)
-        
-        Spacer()
-        
-        // Center top logo
-        Image("logoSansli") // Replace with actual image asset name
-            .resizable()
-            .scaledToFit()
-            .frame(width: 150, height: 100)
-        
-        Spacer()
-        
-        // Right top settings icon
-        Button(action: {
-            showingSettings.wrappedValue = true
-            // Define the action for settings button here
-        }) {
-            Image(systemName: "gear")
-                .font(.title)
-                .foregroundColor(.black)
+    
+    func topLogoBar(showingSettings: Binding<Bool>) -> some View {
+        HStack {
+            Image("luckylogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 50, height: 50)
+                .padding(.leading)
+            
+            Spacer()
+            
+            Image("logoSansli")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 150, height: 100)
+            
+            Spacer()
+            
+            Button(action: {
+                showingSettings.wrappedValue = true
+            }) {
+                Image(systemName: "gear")
+                    .font(.title)
+                    .foregroundColor(.black)
+            }
+            .padding(.trailing)
         }
-        .padding(.trailing)
-    }.background(
-        NavigationLink(destination: SettingsView(), isActive: showingSettings) {
-            EmptyView()
-        }
-            .hidden()
-    )
+    }
 }
 
 
 // Don't forget to define CategoryItem and any other custom views that you are using.
 
+class CartViewModel: ObservableObject {
+    @Published var totalPrice: Double = 0.0
+    @Published var selectedTickets: [TicketSelection] = []
+
+    func addTicketToCart(ticket: Tickets, multiplier: Int) {
+        let ticketSelection = TicketSelection(ticket: ticket, multiplier: multiplier)
+        selectedTickets.append(ticketSelection)
+        updateTotalPrice()
+    }
+
+    private func updateTotalPrice() {
+        totalPrice = selectedTickets.reduce(0) { $0 + ($1.ticket.ticketPrice * Double($1.multiplier)) }
+    }
+}
+
+struct TicketSelection {
+    var ticket: Tickets
+    var multiplier: Int
+}
 
 
 

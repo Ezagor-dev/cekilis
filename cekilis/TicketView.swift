@@ -68,6 +68,8 @@ struct TicketShape: Shape {
 
 // .rotationEffect(.degrees(90))
 struct TicketView: View {
+    @Binding var isTabBarVisible: Bool
+    @EnvironmentObject var cartViewModel: CartViewModel
     var ticket: Tickets
     @State private var showMultipliers = false
     @State private var showPurchaseButton = true
@@ -90,7 +92,7 @@ struct TicketView: View {
                                     .font(.system(size: 10))
                                     .foregroundColor(.white)
                                 
-                                Text("\(daysUntilRaffle+1) Gün")
+                                Text("\(daysUntilRaffle) Gün")
                                     .font(.system(size: 14))
                                     .bold()
                                     .foregroundColor(.white)
@@ -214,7 +216,10 @@ struct TicketView: View {
     }
     var purchaseButton: some View {
         Button(action: {
-            
+            withAnimation {
+                        cartViewModel.addTicketToCart(ticket: ticket, multiplier: selectedMultiplier)
+                        isTabBarVisible = false // This line toggles the visibility of the tab bar which might also control showing/hiding of the checkout view.
+                    }
         }) {
             Text("Bilet al")
                 .font(.system(size: 8))
@@ -297,19 +302,21 @@ struct DashedSeparator: Shape {
 
 
 struct TicketView_Previews: PreviewProvider {
+    @State static var isTabBarVisible = true
     static var previews: some View {
-        TicketView(ticket: Tickets(id: "1",
-                                   category: "Test Category",
-                                   description: "This is a test description for our ticket.",
-                                   imageURL: "https://example.com/image.png",
-                                   isAvailable: true,
-                                   isLive: true,
-                                   prizeCount: 1,
-                                   prizeValue: 232725,
-                                   purchaseCount: 100,
-                                   raffleDateString: "12.04.24",
-                                   ticketPrice: 5,
-                                   titleTicket: "Sample Ticket",
-                                   totalTicket: 10000))
+        TicketView(isTabBarVisible: $isTabBarVisible, ticket: Tickets(id: "1",
+                                                                      category: "Test Category",
+                                                                      description: "This is a test description for our ticket.",
+                                                                      imageURL: "https://example.com/image.png",
+                                                                      isAvailable: true,
+                                                                      isLive: true,
+                                                                      prizeCount: 1,
+                                                                      prizeValue: 232725,
+                                                                      purchaseCount: 100,
+                                                                      raffleDateString: "14.04.24",
+                                                                      ticketPrice: 5,
+                                                                      titleTicket: "Sample Ticket",
+                                                                      totalTicket: 10000))
+        .environmentObject(CartViewModel())
     }
 }

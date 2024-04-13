@@ -68,6 +68,7 @@ struct TicketShape: Shape {
 
 // .rotationEffect(.degrees(90))
 struct TicketView: View {
+    
     @Binding var isTabBarVisible: Bool
     @EnvironmentObject var cartViewModel: CartViewModel
     var ticket: Tickets

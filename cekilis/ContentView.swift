@@ -3,7 +3,8 @@ import Kingfisher
 
 struct CustomTabBar: View {
     @Binding var selectedTab: String
-    
+    @StateObject var cartViewModel = CartViewModel()
+    @State private var showingCart = false
     var body: some View {
         ZStack {
             // Curved shape
@@ -45,12 +46,16 @@ struct CustomTabBar: View {
                     // Shopping or Bag Button
                     Button(action: {
                         selectedTab = "bag"
+                        self.showingCart = true
                     }) {
                         Image(systemName: "bag")
                             .font(.title2)
                             .foregroundColor(selectedTab == "bag" ? .white : .gray)
                     }
                     .frame(maxWidth: .infinity)
+                    .fullScreenCover(isPresented: $showingCart) {
+                                CartView(cartViewModel: cartViewModel, isPresented: $showingCart)
+                            }
                     
                     // Profile Button with Notification Badge
                     Button(action: {
@@ -102,8 +107,10 @@ struct CustomCurveShape: Shape {
 
 // Usage in ContentView
 struct ContentView: View {
-    @State private var isTabBarVisible: Bool = true
     @StateObject var cartViewModel = CartViewModel()
+    @State private var showingCart = false
+    @State private var isTabBarVisible: Bool = true
+    
     
     @State private var showingSettings = false
     @StateObject var sheetManager = SheetManager()
@@ -127,53 +134,75 @@ struct ContentView: View {
     var checkoutView: some View {
         VStack {
             Spacer()
-            HStack {
-                Button(action: {
-                    // Toggle the view to show the tab bar when the 'X' button is clicked
-                    withAnimation {
-                        isTabBarVisible = true
+            VStack {
+                HStack{
+                VStack {
+                    Button(action: {
+                        // Toggle the view to show the tab bar when the 'X' button is clicked
+                        withAnimation {
+                            isTabBarVisible = true
+                        }
+                    }) {
+                        Image(systemName: "xmark.circle.fill") // 'X' mark icon
+                            .foregroundColor(Color.gray) // Adjust color as needed
+                            .imageScale(.large)
+                            .padding(.trailing, 0) // Ensure it's not too close to the text
                     }
-                }) {
-                    Image(systemName: "xmark.circle.fill") // 'X' mark icon
-                        .foregroundColor(Color.gray) // Adjust color as needed
-                        .imageScale(.large)
-                        .padding(.trailing, 10) // Ensure it's not too close to the text
+                    // Arrow down button for cart view
+                    Button(action: {
+                        self.showingCart = true
+                        // Toggle to show cart view
+                    }) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .foregroundColor(Color.gray)
+                            .imageScale(.large)
+                            .padding(.top, 0) // Add some padding above the arrow
+                    }
+                    
                 }
-
-                VStack(alignment: .leading) {
-                    Text("Ödenecek tutar")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    Text("\(cartViewModel.totalPrice, specifier: "%.2f")₺")
-                        .font(.title2)
-                        .fontWeight(.bold)
+                    
+                    VStack(alignment: .leading) {
+                        Text("Ödenecek tutar")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        Text("\(cartViewModel.totalPrice, specifier: "%.2f")₺")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                    }
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        // The action to proceed to payment should be here
+                        self.showingCart = true
+                    }) {
+                        Text("Ödemeye git")
+                            .font(.system(size: 16))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 20)
+                            .background(Color.blue) // Adjust to match your app's theme
+                            .cornerRadius(20)
+                    }
+                    .fullScreenCover(isPresented: $showingCart) {
+                                CartView(cartViewModel: cartViewModel, isPresented: $showingCart)
+                            }
                 }
-
-                Spacer()
-
-                Button(action: {
-                    // The action to proceed to payment should be here
-                }) {
-                    Text("Ödemeye git")
-                        .font(.system(size: 16))
-                        .foregroundColor(.white)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 20)
-                        .background(Color.blue) // Adjust to match your app's theme
-                        .cornerRadius(20)
-                }
+                .padding([.leading, .trailing], 20)
+                .padding([.top, .bottom], 10)
+                .background(Color.white)
+                .cornerRadius(15)
+                .shadow(radius: 5)
+                
+                
             }
-            .padding([.leading, .trailing], 20)
-            .padding([.top, .bottom], 10)
-            .background(Color.white)
-            .cornerRadius(15)
-            .shadow(radius: 5)
             .padding(.bottom, 20)
         }
         .background(Color.white)
         .transition(.move(edge: .bottom))
         .animation(.easeOut, value: isTabBarVisible)
     }
+
     
     var body: some View {
         GeometryReader { geometry in
@@ -292,22 +321,26 @@ struct ContentView: View {
 class CartViewModel: ObservableObject {
     @Published var totalPrice: Double = 0.0
     @Published var selectedTickets: [TicketSelection] = []
-
+    @Published var savedCards: [CreditCard] = []
+   
+    
+    
     func addTicketToCart(ticket: Tickets, multiplier: Int) {
-        let ticketSelection = TicketSelection(ticket: ticket, multiplier: multiplier)
-        selectedTickets.append(ticketSelection)
-        updateTotalPrice()
-    }
+            // Use the ticket's id for the TicketSelection's id
+            let ticketSelection = TicketSelection(id: ticket.id, ticket: ticket, multiplier: multiplier)
+            selectedTickets.append(ticketSelection)
+            updateTotalPrice()
+        }
 
     private func updateTotalPrice() {
         totalPrice = selectedTickets.reduce(0) { $0 + ($1.ticket.ticketPrice * Double($1.multiplier)) }
     }
 }
 
-struct TicketSelection {
-    var ticket: Tickets
-    var multiplier: Int
-}
+//struct TicketSelection {
+//    var ticket: Tickets
+//    var multiplier: Int
+//}
 
 
 

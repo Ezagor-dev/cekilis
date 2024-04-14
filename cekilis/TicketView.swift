@@ -68,7 +68,6 @@ struct TicketShape: Shape {
 
 // .rotationEffect(.degrees(90))
 struct TicketView: View {
-    
     @Binding var isTabBarVisible: Bool
     @EnvironmentObject var cartViewModel: CartViewModel
     var ticket: Tickets
@@ -178,9 +177,6 @@ struct TicketView: View {
                                 .font(.system(size: 16))
                                 .bold()
                             
-                            // Multiplier toggle button and selection view
-                            // Button section
-                            
                             HStack {
                                 
                                 if showPurchaseButton{
@@ -264,6 +260,7 @@ struct TicketView: View {
                     showPurchaseButton = true
                     // Trigger the action to purchase tickets with the selected multiplier
                     // viewModelTicket.purchaseTickets(multiplier: multiplier)
+                    cartViewModel.updateMultiplier(for: ticket, to: selectedMultiplier)
                 }) {
                     Text("\(multiplier)x")
                         .font(.system(size: 7))

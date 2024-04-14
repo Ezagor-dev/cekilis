@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(\.presentationMode) var presentationMode
     @State private var darkModeEnabled = false
     @State private var biometricAuthEnabled = false
     
@@ -40,6 +41,14 @@ struct SettingsView: View {
             }
             .listStyle(GroupedListStyle())
             .navigationBarTitle("Ayarlar")
+            .navigationBarItems(leading: Button(action: {
+                            self.presentationMode.wrappedValue.dismiss() // Dismiss the view when the button is tapped
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.left") // The left arrow icon
+                                Text("Geri") // The text "Back" or "Geri" in Turkish
+                            }
+                        })
             .background(LinearGradient(gradient: Gradient(colors: [Color.purple.opacity(0.6), Color.blue.opacity(0.6)]), startPoint: .top, endPoint: .bottom))
            
         }

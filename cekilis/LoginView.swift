@@ -199,10 +199,14 @@ struct LoginView: View {
                     .padding(.top, 15)
                     
                     Button("Oturum Aç", action: {
+                        self.isUserLoggedIn = true
                         // Handle login logic here
                     })
                     .buttonStyle(BeautifulButtonStyle(color1: .pink, color2: .pink, textColor: .white, frameWidth: buttonWidth))
                     .padding(.top, 20)
+                    NavigationLink(destination: ContentView(), isActive: $isUserLoggedIn) {
+                                        EmptyView()
+                                    }
                     
                     // Divider with "ya da" text in the middle
                     HStack {

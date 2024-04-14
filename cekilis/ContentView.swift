@@ -5,6 +5,7 @@ struct CustomTabBar: View {
     @Binding var selectedTab: String
     @StateObject var cartViewModel = CartViewModel()
     @State private var showingCart = false
+    @State private var showingSettings = false
     var body: some View {
         ZStack {
             // Curved shape
@@ -281,7 +282,7 @@ struct ContentView: View {
                         }
                     }
                 }
-            }
+            }.navigationBarBackButtonHidden()
         }
         .edgesIgnoringSafeArea(.all)
     }
@@ -311,6 +312,10 @@ struct ContentView: View {
                     .foregroundColor(.black)
             }
             .padding(.trailing)
+            .fullScreenCover(isPresented: showingSettings) {
+                        // The view you want to present goes here
+                        SettingsView() // Replace with your actual settings view
+                    }
         }
     }
 }
@@ -326,15 +331,30 @@ class CartViewModel: ObservableObject {
     
     
     func addTicketToCart(ticket: Tickets, multiplier: Int) {
-            // Use the ticket's id for the TicketSelection's id
-            let ticketSelection = TicketSelection(id: ticket.id, ticket: ticket, multiplier: multiplier)
-            selectedTickets.append(ticketSelection)
+            if let index = selectedTickets.firstIndex(where: { $0.ticket.id == ticket.id }) {
+                // Update the existing ticket multiplier
+                selectedTickets[index].multiplier += multiplier
+            } else {
+                // Add a new ticket selection
+                let newSelection = TicketSelection(id: UUID().uuidString, ticket: ticket, multiplier: multiplier)
+                selectedTickets.append(newSelection)
+            }
             updateTotalPrice()
         }
 
     private func updateTotalPrice() {
         totalPrice = selectedTickets.reduce(0) { $0 + ($1.ticket.ticketPrice * Double($1.multiplier)) }
     }
+    func updateMultiplier(for ticket: Tickets, to multiplier: Int) {
+            if let index = selectedTickets.firstIndex(where: { $0.ticket.id == ticket.id }) {
+                selectedTickets[index].multiplier = multiplier
+            } else {
+                // If the ticket isn't already in the cart, add it with the new multiplier
+                addTicketToCart(ticket: ticket, multiplier: multiplier)
+            }
+            updateTotalPrice()
+        }
+    
 }
 
 //struct TicketSelection {

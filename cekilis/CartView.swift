@@ -1,4 +1,5 @@
 import SwiftUI
+import Kingfisher
 
 
 
@@ -126,7 +127,7 @@ struct TicketCartItemView: View {
 
     var body: some View {
         HStack {
-            Image(ticketSelection.ticket.imageURL) // Replace with actual image loading mechanism
+            KFImage(URL(string: ticketSelection.ticket.imageURL)) // Replace with actual image loading mechanism
                 .resizable()
                 .frame(width: 100, height: 60)
                 .cornerRadius(8)
@@ -194,4 +195,3 @@ struct CreditCardView: View {
         .shadow(radius: 5)
     }
 }
-
